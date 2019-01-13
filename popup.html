@@ -1,0 +1,26 @@
+<html>
+<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<title> Subtitlext </title>
+</head>
+
+<body>
+<h3>Configuration</h3>
+<form id="subtitleFileForm">
+	<input id="subtitleFileInput" type="file" name="text" accept=".srt" value="new file">
+	<input type="submit" value="submit"> <label id="submitStatus"></label>
+</form>
+<label>Offset seconds: </label>
+<br/>
+<input type="text" id="offset"><button id="offsetButton">OK</button>
+<br/>
+<label>Refresh intervals (ms): </label>
+<br/>
+<input type="text" id="refreshInterval"><button id="refreshIntervalButton">OK</button>
+<br/>
+<button id="reset">Reset</button>
+<script src="popup.js"></script>
+
+
+</body>
+
+</html>
