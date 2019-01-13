@@ -1,20 +1,5 @@
 "use strict";
 
-var subtitlextStateObj = {
-    lines: null,
-    lastLineIndex: 0,
-    offsetSeconds: 0,
-    refreshInterval: 200,
-    intervalID: null,
-    captionContainerID: "subtitlextDisplayer",
-    captionContainer: null,
-    captionContainerOldWidth: 0,
-    getCurrentSecFunc: null,
-    hideSubtitleFunc: null,
-    setSubtitleFunc: null
-};
-
-
 function toSeconds(t) {
     let s = 0.0;
     if (t) {
@@ -232,4 +217,24 @@ function getOrCreateDisplayBox() {
 
     return displayer;
 }
+
+
+//in case of repeated loading of this script, stop old task if any
+if(typeof subtitlextStateObj!=="undefined" && subtitlextStateObj.intervalID!==null){
+    stop();
+}
+
+var subtitlextStateObj = {
+    lines: null,
+    lastLineIndex: 0,
+    offsetSeconds: 0,
+    refreshInterval: 200,
+    intervalID: null,
+    captionContainerID: "subtitlextDisplayer",
+    captionContainer: null,
+    captionContainerOldWidth: 0,
+    getCurrentSecFunc: null,
+    hideSubtitleFunc: null,
+    setSubtitleFunc: null
+};
 
