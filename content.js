@@ -1,6 +1,27 @@
 "use strict";
 
-function toSeconds(t) {
+//in case of repeated loading of this script, stop old task if any
+if(typeof subtitlextObj!=="undefined" && subtitlextObj.intervalID!==null){
+    subtitlextObj.stop();
+}
+
+var subtitlextObj = {
+    uniqueId: "c3VidGl0bGV4dCBieSBwY2hlbjdlMg==", // used to test for object name conflict
+    lines: null,
+    lastLineIndex: 0,
+    offsetSeconds: 0,
+    refreshInterval: 200,
+    intervalID: null,
+    subtitleContainerID: "subtitlextDisplayer",
+    subtitleContainer: null,
+    subtitleContainerOldWidth: 0,
+    getCurrentTimeFunc: null,
+    hideSubtitleFunc: null,
+    setSubtitleFunc: null
+};
+
+
+subtitlextObj.toSeconds = function (t) {
     let s = 0.0;
     if (t) {
         let p = t.split(':');
@@ -9,9 +30,9 @@ function toSeconds(t) {
         }
     }
     return s;
-}
+};
 
-function parseSRT(contents) {
+subtitlextObj.parseSRT = function (contents) {
     contents = contents.replace(/\r/g, '');
     let texts = contents.split('\n');
     let textArray = [];
@@ -32,8 +53,8 @@ function parseSRT(contents) {
 
         if (textSubtitle.length >= 2) {
             let sn = textSubtitle[0]; // the sequence number of subtitles
-            let startTime = toSeconds(textSubtitle[1].split(' --> ')[0]); // start time of a subtitle
-            let endTime = toSeconds(textSubtitle[1].split(' --> ')[1]); // end time of a subtitle
+            let startTime = subtitlextObj.toSeconds(textSubtitle[1].split(' --> ')[0]); // start time of a subtitle
+            let endTime = subtitlextObj.toSeconds(textSubtitle[1].split(' --> ')[1]); // end time of a subtitle
             let content = textSubtitle[2]; // content of a subtitle
 
 
@@ -54,124 +75,136 @@ function parseSRT(contents) {
         }
     }
     return lines;
-}
+};
 
 
-function setup() {
-    subtitlextStateObj.captionContainer = getOrCreateDisplayBox();
-    subtitlextStateObj.hideSubtitleFunc =
+subtitlextObj.setup =function() {
+    subtitlextObj.subtitleContainer = subtitlextObj.getOrCreateDisplayBox();
+    subtitlextObj.hideSubtitleFunc =
         () => {
-            subtitlextStateObj.captionContainer.style.display = "none";
+            subtitlextObj.subtitleContainer.style.display = "none";
         };
-    subtitlextStateObj.setSubtitleFunc =
+    subtitlextObj.setSubtitleFunc =
         (line) => {
-            subtitlextStateObj.captionContainer.style.display = "";
-            subtitlextStateObj.captionContainer.firstElementChild.innerText = line;
+            subtitlextObj.subtitleContainer.style.display = "";
+            subtitlextObj.subtitleContainer.firstElementChild.innerText = line;
 
-            //keep the center of the caption container not moved
-            let deltaWidth = subtitlextStateObj.captionContainer.offsetWidth -
-                subtitlextStateObj.captionContainerOldWidth;
+            //keep the center of the subtitle container not moved
+            let deltaWidth = subtitlextObj.subtitleContainer.offsetWidth -
+                subtitlextObj.subtitleContainerOldWidth;
             if(deltaWidth === 0){
                 return;
             }
-            subtitlextStateObj.captionContainer.style.left =
-                (subtitlextStateObj.captionContainer.offsetLeft - deltaWidth/2) + "px";
-            subtitlextStateObj.captionContainerOldWidth = subtitlextStateObj.captionContainer.offsetWidth;
+            subtitlextObj.subtitleContainer.style.left =
+                (subtitlextObj.subtitleContainer.offsetLeft - deltaWidth/2) + "px";
+            subtitlextObj.subtitleContainerOldWidth = subtitlextObj.subtitleContainer.offsetWidth;
         };
 
     /*
     Site specific setup:
     1. Must insert the display box div into the right place so that it remains showing in full screen mode
-    2. Must provide the function to get the current seconds time value
+    2. Must provide the function to get the current time value
      */
 
     if (window.location.href.indexOf("hulu.com") > -1) { // Hulu
-        //todo: bug: Hulu still lags for some reason, missing some lines of subtitle
         //append display box
-        document.getElementsByClassName('hulu-player-app')[0].appendChild(subtitlextStateObj.captionContainer);
+        document.getElementsByClassName('hulu-player-app')[0].appendChild(subtitlextObj.subtitleContainer);
         //bind time container to read time
-        subtitlextStateObj.timeContainer = document.getElementsByClassName('controls__time-elapsed')[0];
+        subtitlextObj.timeContainer = document.getElementsByTagName('video')[0];
         //read time function
-        subtitlextStateObj.getCurrentSecFunc =
+        subtitlextObj.getCurrentTimeFunc =
             () => {
-                return toSeconds(subtitlextStateObj.timeContainer.innerText);
+                return subtitlextObj.timeContainer.currentTime;
             };
     }
     else if (window.location.href.indexOf("amazon.com") > -1) { // Amazon Prime
         //append display box
-        document.getElementsByClassName('webPlayer')[0].appendChild(subtitlextStateObj.captionContainer);
+        document.getElementsByClassName('webPlayer')[0].appendChild(subtitlextObj.subtitleContainer);
         //bind time container to read time
-        subtitlextStateObj.timeContainer = document.getElementsByClassName('time')[0];
+        subtitlextObj.timeContainer = document.getElementsByTagName('video')[1];
         //read time function
-        subtitlextStateObj.getCurrentSecFunc =
+        subtitlextObj.getCurrentTimeFunc =
             () => {
-                let timeStr = subtitlextStateObj.timeContainer.innerText;
-                return toSeconds(timeStr.split('/')[0]);
+                return subtitlextObj.timeContainer.currentTime;
+            };
+    }
+    else{ // default site configuration (maybe not working)
+        console.warn('Subtitlext: This site is not officially supported, so the extension may fail.');
+        let videoNodes = document.getElementsByTagName('video');
+        // pick the <video> tag with the longest outerHTML (just a guess)
+        subtitlextObj.timeContainer = Array.from(videoNodes).reduce(
+            (accu, cur)=>(cur.outerHTML.length > accu.outerHTML.length? cur:accu)
+        );
+
+        // put the subtitle display box in the same level with <video>'s parent (just a guess)
+        subtitlextObj.timeContainer.parentElement.parentElement.appendChild(subtitlextObj.subtitleContainer);
+        subtitlextObj.getCurrentTimeFunc =
+            () => {
+                return subtitlextObj.timeContainer.currentTime;
             };
     }
 
-}
+};
 
-function processIteration(lines, timeOffset) {
-    let currentSecond = subtitlextStateObj.getCurrentSecFunc() + timeOffset;
-    if (currentSecond < lines[subtitlextStateObj.lastLineIndex].startTime) {
+subtitlextObj.processIteration = function (lines, timeOffset) {
+    let currentTime = subtitlextObj.getCurrentTimeFunc() + timeOffset;
+    if (currentTime < lines[subtitlextObj.lastLineIndex].startTime) {
         //audience has manually adjusted display progress, so reset last line index and search from the start
-        subtitlextStateObj.lastLineIndex = 0;
+        subtitlextObj.lastLineIndex = 0;
     }
 
-    for (let i = subtitlextStateObj.lastLineIndex; i < lines.length; i++) {
-        if (lines[i].startTime > currentSecond) {
+    for (let i = subtitlextObj.lastLineIndex; i < lines.length; i++) {
+        if (lines[i].startTime > currentTime) {
             // no time slot found, no subtitle
-            subtitlextStateObj.hideSubtitleFunc();
+            subtitlextObj.hideSubtitleFunc();
             return;
         }
-        if (lines[i].endTime >= currentSecond) {
+        if (lines[i].endTime >= currentTime) {
             // found right time slot, display this line of subtitle
-            //console.log(lines[i].content);
-            subtitlextStateObj.setSubtitleFunc(lines[i].content);
-            subtitlextStateObj.lastLineIndex = i;
+            subtitlextObj.setSubtitleFunc(lines[i].content);
+            subtitlextObj.lastLineIndex = i;
             return;
         }
     }
     // after all the subtitles are displayed
-    subtitlextStateObj.hideSubtitleFunc();
-}
+    subtitlextObj.hideSubtitleFunc();
+};
 
 
-function start() {
-    subtitlextStateObj.intervalID = setInterval(
+subtitlextObj.start = function start() {
+    subtitlextObj.intervalID = setInterval(
         () => {
-            processIteration(subtitlextStateObj.lines, subtitlextStateObj.offsetSeconds);
+            subtitlextObj.processIteration(subtitlextObj.lines, subtitlextObj.offsetSeconds);
         },
-        subtitlextStateObj.refreshInterval
+        subtitlextObj.refreshInterval
     );
-}
+};
 
-function stop() {
-    clearInterval(subtitlextStateObj.intervalID);
-}
+subtitlextObj.stop = function stop() {
+    clearInterval(subtitlextObj.intervalID);
+};
 
-function setOffset(newOffset) {
-    subtitlextStateObj.offsetSeconds = parseFloat(newOffset);
-    stop();
-    start();
-}
+subtitlextObj.setOffset = function (newOffset) {
+    subtitlextObj.offsetSeconds = parseFloat(newOffset);
+    subtitlextObj.stop();
+    subtitlextObj.start();
+};
 
-function setRefreshInterval(newRefreshInterval) {
-    subtitlextStateObj.refreshInterval = parseFloat(newRefreshInterval);
-    stop();
-    start();
-}
+subtitlextObj.setRefreshInterval = function (newRefreshInterval) {
+    subtitlextObj.refreshInterval = parseFloat(newRefreshInterval);
+    subtitlextObj.stop();
+    subtitlextObj.start();
+};
 
 
 //this div is used to display subtitle lines
-function getOrCreateDisplayBox() {
-    if (document.getElementById(subtitlextStateObj.captionContainerID) !== null) {
-        return document.getElementById(subtitlextStateObj.captionContainerID);
+subtitlextObj.getOrCreateDisplayBox = function () {
+    if (document.getElementById(subtitlextObj.subtitleContainerID) !== null) {
+        return document.getElementById(subtitlextObj.subtitleContainerID);
     }
 
     let displayer = document.createElement('div');
-    displayer.innerHTML = `<div id="`+subtitlextStateObj.captionContainerID+`"`+
+    displayer.innerHTML = `<div id="`+subtitlextObj.subtitleContainerID+`"`+
         ` style="position: absolute; z-index:999; color: rgb(255, 255, 255); ` +
         `padding-left: 10px; padding-right: 10px; ` +
         `font-family: Arial; font-size: 28px; text-shadow: rgba(0, 0, 0, 0.75) 2px 2px 3px; ` +
@@ -216,25 +249,7 @@ function getOrCreateDisplayBox() {
     })(displayer);
 
     return displayer;
-}
-
-
-//in case of repeated loading of this script, stop old task if any
-if(typeof subtitlextStateObj!=="undefined" && subtitlextStateObj.intervalID!==null){
-    stop();
-}
-
-var subtitlextStateObj = {
-    lines: null,
-    lastLineIndex: 0,
-    offsetSeconds: 0,
-    refreshInterval: 200,
-    intervalID: null,
-    captionContainerID: "subtitlextDisplayer",
-    captionContainer: null,
-    captionContainerOldWidth: 0,
-    getCurrentSecFunc: null,
-    hideSubtitleFunc: null,
-    setSubtitleFunc: null
 };
+
+
 

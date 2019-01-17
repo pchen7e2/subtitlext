@@ -13,9 +13,9 @@ function readSRT(file){
             },
             ()=>{
                 chrome.tabs.executeScript({
-                    code:"subtitlextStateObj.lines=parseSRT(`"+event.target.result+"`);"+
-                    "setup();"+
-                    "start();"
+                    code:"subtitlextObj.lines=subtitlextObj.parseSRT(`"+event.target.result+"`);"+
+                    "subtitlextObj.setup();"+
+                    "subtitlextObj.start();"
                 });
             }
         );
@@ -29,8 +29,8 @@ function readSRT(file){
 function initialize() {
     chrome.storage.local.clear();
     chrome.storage.local.set({
-        offsetSeconds : 0, // must be consistent with that of subtitlextStateObj in content.js
-        refreshInterval : 200, // must be consistent with that of subtitlextStateObj in content.js
+        offsetSeconds : 0, // must be consistent with that of subtitlextObj in content.js
+        refreshInterval : 200, // must be consistent with that of subtitlextObj in content.js
         subtitleFileName: ""
     });
     document.getElementById('offset').value = 0;
@@ -48,7 +48,7 @@ document.getElementById('subtitleFileForm').addEventListener('submit', function(
 document.getElementById('offsetButton').addEventListener('click', ()=>{
     let newOffset = parseFloat(document.getElementById('offset').value);
     chrome.tabs.executeScript({
-        code: "setOffset("+newOffset+");"
+        code: "subtitlextObj.setOffset("+newOffset+");"
     });
 
     chrome.storage.local.set({offsetSeconds:newOffset});
@@ -56,7 +56,7 @@ document.getElementById('offsetButton').addEventListener('click', ()=>{
 document.getElementById('refreshIntervalButton').addEventListener('click', ()=>{
     let newRefreshInterval = parseFloat(document.getElementById('refreshInterval').value);
     chrome.tabs.executeScript({
-        code: "setRefreshInterval("+newRefreshInterval+");"
+        code: "subtitlextObj.setRefreshInterval("+newRefreshInterval+");"
     });
     chrome.storage.local.set({refreshInterval:parseFloat(document.getElementById('refreshInterval').value)});
 });
