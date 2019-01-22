@@ -21,15 +21,52 @@ var subtitlextObj = {
 };
 
 
-subtitlextObj.toSeconds = function (t) {
-    let s = 0.0;
-    if (t) {
-        let p = t.split(':');
-        for (let i = 0; i < p.length; i++) {
-            s = s * 60 + parseFloat(p[i].replace(',', '.'));
+
+subtitlextObj.parseSSA = function (contents) {
+    //todo: handle different styles like note, top ...
+    contents = contents.replace(/\r/g, '');
+    let texts = contents.split('\n');
+    texts = texts.filter(s=>s.startsWith("Dialogue"));
+
+    let toSeconds = function(str) {
+        let arr = str.split(':');
+        let seconds = parseInt(arr[0])*3600+parseInt(arr[1])*60+parseFloat(arr[2]);
+        if(arr.length === 4){
+            seconds += parseFloat(arr[3])/Math.pow(10, arr[3].length);
         }
+        return seconds;
+    };
+    let lines = [];
+    for(let i=0;i<texts.length;i++){
+        let arr = texts[i].split(',');
+        let startTime = toSeconds(arr[1].trim());
+        let endTime = toSeconds(arr[2].trim());
+        // content may have contained comma so we concatenate them
+        let content = arr[9];
+        for(let i=10;i<arr.length;i++){
+            content += arr[i];
+        }
+
+        content = content.trim();
+        //remove non-text content ------ "{\...}"
+        let left = content.indexOf('{\\');
+        if(left > -1){
+            let right = content.indexOf('}');
+            content = content.substr(0, left)+content.substr(right+1);
+        }
+        // adjust newline char
+        content = content.replace(/\\n|\\N/g,'\n');
+
+        let subtitle = {
+            seqNo: i+1,
+            startTime: startTime,
+            endTime: endTime,
+            content: content
+        };
+        lines.push(subtitle);
     }
-    return s;
+    lines.sort((e1,e2)=>(e1.startTime-e2.startTime));
+    return lines;
 };
 
 subtitlextObj.parseSRT = function (contents) {
@@ -47,14 +84,24 @@ subtitlextObj.parseSRT = function (contents) {
     }
     textArray.push(tmp);
 
+    let toSeconds = function(t) {
+        let s = 0.0;
+        if (t) {
+            let p = t.split(':');
+            for (let i = 0; i < p.length; i++) {
+                s = s * 60 + parseFloat(p[i].replace(',', '.'));
+            }
+        }
+        return s;
+    };
     let lines = [];
     for (let i = 0; i < textArray.length; i++) {
         let textSubtitle = textArray[i];
 
         if (textSubtitle.length >= 2) {
-            let sn = textSubtitle[0]; // the sequence number of subtitles
-            let startTime = subtitlextObj.toSeconds(textSubtitle[1].split(' --> ')[0]); // start time of a subtitle
-            let endTime = subtitlextObj.toSeconds(textSubtitle[1].split(' --> ')[1]); // end time of a subtitle
+            let seqNo = textSubtitle[0]; // the sequence number of subtitles
+            let startTime = toSeconds(textSubtitle[1].split(' --> ')[0]); // start time of a subtitle
+            let endTime = toSeconds(textSubtitle[1].split(' --> ')[1]); // end time of a subtitle
             let content = textSubtitle[2]; // content of a subtitle
 
 
@@ -66,7 +113,7 @@ subtitlextObj.parseSRT = function (contents) {
             }
             // a subtitle object
             let subtitle = {
-                sn: sn,
+                seqNo: seqNo,
                 startTime: startTime,
                 endTime: endTime,
                 content: content
@@ -74,6 +121,7 @@ subtitlextObj.parseSRT = function (contents) {
             lines.push(subtitle);
         }
     }
+    lines.sort((e1,e2)=>(e1.startTime-e2.startTime));
     return lines;
 };
 

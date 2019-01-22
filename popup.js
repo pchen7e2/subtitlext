@@ -1,7 +1,7 @@
 "use strict";
 
 
-function readSRT(file){
+function readFile(file){
     const reader = new FileReader();
     reader.onload = (event) => {
         document.getElementById('submitStatus').innerText = "Success!";
@@ -12,11 +12,21 @@ function readSRT(file){
                 file:"content.js"
             },
             ()=>{
-                chrome.tabs.executeScript({
-                    code:"subtitlextObj.lines=subtitlextObj.parseSRT(`"+event.target.result+"`);"+
-                    "subtitlextObj.setup();"+
-                    "subtitlextObj.start();"
-                });
+                if(file.name.toLowerCase().endsWith('.srt')) {
+                    chrome.tabs.executeScript({
+                        code: "subtitlextObj.lines=subtitlextObj.parseSRT(`" + event.target.result + "`);" +
+                        "subtitlextObj.setup();" +
+                        "subtitlextObj.start();"
+                    });
+                }
+                else if( file.name.toLowerCase().endsWith('.ssa') || file.name.toLowerCase().endsWith('.ass') ){
+                    chrome.tabs.executeScript({
+                        code: "subtitlextObj.lines=subtitlextObj.parseSSA(`" +
+                        event.target.result.replace(/\\/g,'\\\\') + "`);" +  //.ssa/.ass can contain "\n" "{\...}"
+                        "subtitlextObj.setup();" +
+                        "subtitlextObj.start();"
+                    });
+                }
             }
         );
     }; // desired file content
@@ -43,7 +53,7 @@ document.getElementById('subtitleFileForm').addEventListener('submit', function(
     let file = document.getElementById('subtitleFileInput').files[0];
     chrome.storage.local.set({subtitleFileName:file.name});
     initialize();
-    readSRT(file);
+    readFile(file);
 });
 document.getElementById('offsetButton').addEventListener('click', ()=>{
     let newOffset = parseFloat(document.getElementById('offset').value);
@@ -76,4 +86,3 @@ chrome.storage.local.get(['refreshInterval'], function(result) {
     document.getElementById('refreshInterval').value = result.refreshInterval;
 });
 
-//todo: parse other encoding subtitle file like GB2313
