@@ -128,6 +128,26 @@ subtitlextObj.setup =function() {
                 return subtitlextObj.timeContainer.currentTime;
             };
     }
+    else if (window.location.href.indexOf("www.crunchyroll.com") > -1){ // Crunchyroll configuration
+        //note for dev: manually creating a subtitle display box in Chrome console and
+        //  appending it in crunchyroll.com will not work -- clicking the box will make the page
+        //  crash. This issue is surprisingly gone in Chrome extension's content script.
+
+        //temporarily change domain to access cross origin iframe to get the timeContainer reference
+        document.domain = 'crunchyroll.com';
+        subtitlextObj.timeContainer =
+            document.getElementById('vilos-player').contentWindow.document.getElementsByTagName('video')[0];
+        //append display box
+        subtitlextObj.timeContainer.parentElement.parentElement.appendChild(subtitlextObj.subtitleContainer);
+        //change domain back
+        document.domain = 'www.crunchyroll.com';
+        //read time function
+        subtitlextObj.getCurrentTimeFunc =
+            () => {
+                return subtitlextObj.timeContainer.currentTime;
+            };
+
+    }
     else{ // default site configuration (maybe not working)
         console.warn('Subtitlext: This site is not officially supported, so the extension may fail.');
         let videoNodes = document.getElementsByTagName('video');
@@ -205,7 +225,7 @@ subtitlextObj.getOrCreateDisplayBox = function () {
 
     let displayer = document.createElement('div');
     displayer.innerHTML = `<div id="`+subtitlextObj.subtitleContainerID+`"`+
-        ` style="position: absolute; z-index:999; color: rgb(255, 255, 255); ` +
+        `style="cursor: move; position: absolute; z-index:999; color: rgb(255, 255, 255); ` +
         `padding-left: 10px; padding-right: 10px; ` +
         `font-family: Arial; font-size: 28px; text-shadow: rgba(0, 0, 0, 0.75) 2px 2px 3px; ` +
         `background-color: rgba(0, 0, 0, 0.5); overflow: visible; display: ; left: 100px; top: 75px; ">` +
