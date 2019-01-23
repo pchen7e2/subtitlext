@@ -1,11 +1,11 @@
 # subtitlext
-A Chrome extension to display user-provided `.srt` subtitles for videos played on a webpage. With this extension you can display an external `.srt` subtitle file when watching videos online. The choice 
+A Chrome extension to display user-provided `.srt` or `.ssa/.ass` subtitles for videos played on a webpage. With this extension you can display an external subtitle file when watching videos online. The choice 
 is no longer limited to those provided by video providers. For example, you can add a Chinese subtitle file or a 
 dual-language one.
 
 ### Sites supported
-**Hulu** and 
-**Amazon Prime Video** are supported and tested.
+**Hulu**,
+**Amazon Prime Video** and **Crunchyroll** are supported and tested.
 
 It can be easily extend 
 to support other sites. Before that, it uses a default configuration for those sites.
@@ -23,10 +23,12 @@ Feel free to try it, it may work (at least for **YouTube** and **Bilibili**)!
 
 ### Extend to support other sites:
 Continue to fill `subtitlextObj.setup()` of `content.js` (adding about 5 lines of code): 
-1. Find the web player DOM of the new site and append the subtitle display box as its child
+
+1. Find the web player DOM of the new site and append the subtitle display box as the sibling of its parent
 2. Define a function to retrieve the current time value in second from the new site
 
-### Todo:
-1. Support decoding of subtitle files of encodings other than "utf-8" or "utf-16le".
-2. Support parsing of subtitle files of other formats, like `.ass` or `.ssa`.
-3. Interact with the user to dynamically add support for new sites
+### Possible future work:
+1. Web crawling for subtitle files
+2. Interact with the user to dynamically add support for new sites
+3. Support decoding of subtitle files of encodings other than "utf-8" or "utf-16le".
+

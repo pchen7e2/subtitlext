@@ -23,7 +23,6 @@ var subtitlextObj = {
 
 
 subtitlextObj.parseSSA = function (contents) {
-    //todo: handle different styles like note, top ...
     contents = contents.replace(/\r/g, '');
     let texts = contents.split('\n');
     texts = texts.filter(s=>s.startsWith("Dialogue"));
@@ -66,6 +65,18 @@ subtitlextObj.parseSSA = function (contents) {
         lines.push(subtitle);
     }
     lines.sort((e1,e2)=>(e1.startTime-e2.startTime));
+
+    // it's possible subtitles display time overlap, e.g. top subtitle and bottom subtitle
+    // for such case, we simply concatenate the subtitles to the earlier one so that they all get displayed
+    for(let i=0;i<lines.length;i++){
+        for(let j=i+1;j<lines.length;j++){
+            if(lines[j].startTime>=lines[i].endTime){
+                break;
+            }
+            lines[i].content += "\n"+lines[j].content;
+        }
+    }
+
     return lines;
 };
 
